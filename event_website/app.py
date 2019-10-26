@@ -7,7 +7,7 @@ import smtplib
 from email.mime.text import MIMEText
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://elvboyxlnpohpo:f609c9d918dcde1ede396b2a1b48cc8844e7805534e2123e3bc374155a26e4ca@ec2-174-129-252-228.compute-1.amazonaws.com:5432/d89p5nt7h828t1'
 app.config['SECRET_KEY'] = '5791628bb0b13ce0c676dfde280ba245'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
