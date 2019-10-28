@@ -27,14 +27,19 @@
           <div class="collapse navbar-collapse" id="navbarToggle">
             <div class="navbar-nav mr-auto">
               <a class="nav-item nav-link" href="{{ url_for('home') }}">Home</a>
-              <a class="nav-item nav-link" href="{{ url_for('create_event') }}">Create Event Now</a>
+
             </div>
 
             <div class="navbar-nav">
-              <a class="nav-item nav-link" href="{{ url_for('user_login') }}">Login</a>
-              <a class="nav-item nav-link" href="{{ url_for('user_register') }}">Register</a>
-              <a class="nav-item nav-link" href="{{ url_for('user_logout') }}">Logout</a>
+                {% if session['email'] %}
+                <a class="nav-item nav-link"><b> Welcome {{ session['email'] }}</b></a>
+                <a class="nav-item nav-link" href="{{ url_for('create_event') }}">Create Event Now</a>
+                <a class="nav-item nav-link" href="{{ url_for('user_logout') }}">Logout</a>
+                {% else %}
+                <a class="nav-item nav-link" href="{{ url_for('user_login') }}">Login</a>
+                <a class="nav-item nav-link" href="{{ url_for('user_register') }}">Register</a>
             </div>
+              {% endif %}
           </div>
         </div>
       </nav>
@@ -47,7 +52,7 @@
             {% if messages %}
               {% for message in messages %}
                 <div class="alert alert-success">
-                  {{ message }}
+                  {{ Message }}
                 </div>
               {% endfor %}
             {% endif %}
@@ -80,7 +85,6 @@
               </div>
         </div>
       </div>
-    </div>
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>

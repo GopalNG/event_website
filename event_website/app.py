@@ -1,19 +1,18 @@
-from flask import Flask,render_template, url_for, flash, redirect, session,logging,request
+from flask import Flask, render_template, url_for, flash, redirect, session, logging, request
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from flask_mail import Mail, Message
-import json
 import smtplib
 from email.mime.text import MIMEText
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://elvboyxlnpohpo:f609c9d918dcde1ede396b2a1b48cc8844e7805534e2123e3bc374155a26e4ca@ec2-174-129-252-228.compute-1.amazonaws.com:5432/d89p5nt7h828t1'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 app.config['SECRET_KEY'] = '5791628bb0b13ce0c676dfde280ba245'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
 db = SQLAlchemy(app)
 
-from models import User,Events,Attendees,PrivateJoinReq
+from models import User, Events, Attendees, PrivateJoinReq
+
 
 class GmailHandler:
 
@@ -41,31 +40,34 @@ class GmailHandler:
         smtp.quit()
         return True
 
+
 @app.route('/')
 def home():
     data = Events.query.all()
-    return render_template("index.html",events=data,title="Home")
+    return render_template("index.html", events=data, title="Home")
 
-@app.route('/login',methods=["GET","POST"])
+
+@app.route('/login', methods=["GET", "POST"])
 def user_login():
     if request.method == "POST":
         uemail = request.form["uname"]
         upass = request.form["passw"]
-        login = User.query.filter_by(email=uemail,password=upass).first()
+        login = User.query.filter_by(email=uemail, password=upass).first()
         if login is not None:
             session['email'] = uemail
             print(session['email'])
             return redirect(url_for("home"))
     return render_template("login.html")
 
-@app.route('/register',methods=["GET","POST"])
+
+@app.route('/register', methods=["GET", "POST"])
 def user_register():
     if request.method == "POST":
         uname = request.form.get("uname")
         mail = request.form.get("mail")
         passw = request.form.get("passw")
         try:
-            user = User(username=uname,email=mail,password=passw)
+            user = User(username=uname, email=mail, password=passw)
             db.session.add(user)
             db.session.commit()
             flash("User Login Success")
@@ -73,6 +75,7 @@ def user_register():
         except Exception as error:
             print(error)
     return render_template("register.html")
+
 
 @app.route('/logout')
 def user_logout():
@@ -82,13 +85,14 @@ def user_logout():
         return redirect(url_for('home'))
     return redirect(url_for('user_login'))
 
-@app.route('/createevent',methods=["GET","POST"])
+
+@app.route('/createevent', methods=["GET", "POST"])
 def create_event():
     if session.get('email'):
         print(session.get('email'))
         if request.method == "GET":
-            eventtype = ['select one','Public','Private']
-            return render_template("create_event.html",title="Create Event",eventtype=eventtype)
+            eventtype = ['select one', 'Public', 'Private']
+            return render_template("create_event.html", title="Create Event", eventtype=eventtype)
         else:
             etitle = request.form.get("title")
             econtent = request.form.get("content")
@@ -99,15 +103,16 @@ def create_event():
             euser_id = db.session.query(User.id).filter_by(email=mailid).first()
             eventtype = request.form.get("etype")
             print("EEEEE :: {}".format(eventtype))
-            print("D::::"+str(datetime.utcnow))
+            print("D::::" + str(datetime.utcnow))
 
             etime = request.form.get("time")
             f = "%Y-%m-%dT%H:%M"
-            formated_time = datetime.strptime(etime,f)
-            print(euser_id , mailid,etime,formated_time)
+            formated_time = datetime.strptime(etime, f)
+            print(euser_id, mailid, etime, formated_time)
             try:
-                event = Events(title=etitle,content=econtent,event_type=eventtype,user_id=euser_id[0],city=ecity,state=estate,location=elocation,date_posted=formated_time)
-                print(etitle, econtent,ecity,estate,elocation,euser_id)
+                event = Events(title=etitle, content=econtent, event_type=eventtype, user_id=euser_id[0], city=ecity,
+                               state=estate, location=elocation, date_posted=formated_time)
+                print(etitle, econtent, ecity, estate, elocation, euser_id)
                 db.session.add(event)
                 db.session.commit()
                 flash("Created Event Successful")
@@ -116,57 +121,63 @@ def create_event():
                 print(error)
     return redirect(url_for("home"))
 
+
 @app.route('/join/<event_id>')
 def join_event(event_id):
     if session.get('email'):
         umailid = session.get('email')
-        rtnvalue = Attendees.query.filter_by(mailid=umailid,event_id=event_id).first()
+        rtnvalue = Attendees.query.filter_by(mailid=umailid, event_id=event_id).first()
         if not rtnvalue:
-            joinevent = Attendees(mailid=umailid,event_id=event_id)
+            joinevent = Attendees(mailid=umailid, event_id=event_id)
             db.session.add(joinevent)
             db.session.commit()
-            flash('Request success -You Joined event_id : {} and User : {}'.format(event_id,umailid))
+            flash('Request success -You Joined event_id : {} and User : {}'.format(event_id, umailid))
             return redirect(url_for('home'))
         flash("AlReady Joined Event {}".format(event_id))
         return redirect(url_for('home'))
     return redirect(url_for('user_login'))
 
-@app.route('/privateeventjoinreq/<eventid>/<emailid>',methods=["GET","POST"])
-def join_private_event(eventid,emailid):
+
+@app.route('/privateeventjoinreq/<eventid>/<emailid>', methods=["GET", "POST"])
+def join_private_event(eventid, emailid):
     try:
         # get request id with eventid and emailid
         reqid = db.session.query(PrivateJoinReq.id).filter_by(mailid=emailid).first()
         # add to attendees list emailid and event
         if reqid:
-            joinevent = Attendees(mailid=emailid,event_id=eventid)
+            joinevent = Attendees(mailid=emailid, event_id=eventid)
             db.session.add(joinevent)
             db.session.commit()
             # delete request id
-            obj = PrivateJoinReq.query.filter_by(id=reqid[0],mailid=emailid).first()
+            obj = PrivateJoinReq.query.filter_by(id=reqid[0], mailid=emailid).first()
             db.session.delete(obj)
             db.session.commit()
-            flash("Joined Event {} for mailid {}".format(eventid,emailid))
+            flash("Joined Event {} for mailid {}".format(eventid, emailid))
             return redirect(url_for('home'))
     except TypeError:
         flash("AlReady Joined or Token Deleted")
 
-@app.route('/joinreqform/<eventid>',methods=["GET","POST"])
+
+@app.route('/joinreqform/<eventid>', methods=["GET", "POST"])
 def join_req_from(eventid):
     if request.method == "POST":
         email = request.form.get("mail")
-        rtnvalue = Attendees.query.filter_by(mailid=email,event_id=eventid).first()
+        rtnvalue = Attendees.query.filter_by(mailid=email, event_id=eventid).first()
         if not rtnvalue:
-            sub_content = 'http://127.0.0.1:5000/privateeventjoinreq/{}/{}'.format(eventid,email)
-            rest = GmailHandler("nagubandigopal@gmail.com").send_mail(receivers=[email],subject="click above link to join the event",text=sub_content)
+            sub_content = 'http://127.0.0.1:5000/privateeventjoinreq/{}/{}'.format(eventid, email)
+            rest = GmailHandler("nagubandigopal@gmail.com").send_mail(receivers=[email],
+                                                                      subject="click above link to join the event",
+                                                                      text=sub_content)
             print(rest)
             if rest:
-                joinreq = PrivateJoinReq(mailid=email,event_id=eventid)
+                joinreq = PrivateJoinReq(mailid=email, event_id=eventid)
                 db.session.add(joinreq)
                 db.session.commit()
-            flash("Request Sent To Your Mail Id : {} for event: {}".format(email,eventid))
+            flash("Request Sent To Your Mail Id : {} for event: {}".format(email, eventid))
             return redirect(url_for('home'))
         flash("AlReady Join In Event Thanks For your Intrest")
     return render_template("join_req_form.html")
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     app.run(debug=True)
