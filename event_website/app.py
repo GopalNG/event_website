@@ -13,6 +13,13 @@ db = SQLAlchemy(app)
 
 from models import User, Events, Attendees, PrivateJoinReq
 
+def login_require(func):
+    def login_checker():
+        if session.get('email'):
+            return True
+        return False
+    return login_checker
+
 
 class GmailHandler:
 
@@ -86,6 +93,7 @@ def user_logout():
     return redirect(url_for('user_login'))
 
 
+@login_require
 @app.route('/createevent', methods=["GET", "POST"])
 def create_event():
     if session.get('email'):
